@@ -36,3 +36,19 @@ def create_task(request):
             {"status": "error", "message": str(e)},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+@api_view(['GET'])
+def get_tasks(request):
+    try:
+        qs = Task.objects.all()
+        serializer = TaskModelSerializer(qs, many=True)
+        return Response({
+            "status": "success",
+            "message": "Tasks retrieved successfully",
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {"status": "error", "message": str(e)},
+            status=status.HTTP_400_BAD_REQUEST
+        )
