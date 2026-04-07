@@ -7,9 +7,9 @@ class TaskBaseSerializer(serializers.Serializer):
 
 class TaskUpdateSerializer(serializers.Serializer):
     task_id = serializers.IntegerField(required=True)
-    title = serializers.CharField(required=False, max_length=200)
-    description = serializers.CharField(required=False, allow_blank=True)
-    completed = serializers.BooleanField(required=False)
+    title = serializers.CharField(required=True, max_length=200)
+    description = serializers.CharField(required=False, allow_blank=True, default="")
+    completed = serializers.BooleanField(required=False, default=False)
 
 class TaskDeleteSerializer(serializers.Serializer):
     task_id = serializers.IntegerField(required=True)

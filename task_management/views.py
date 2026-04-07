@@ -19,13 +19,15 @@ def create_task(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    validated_data = serializer.validated_data
+    title = serializer.validated_data.get('title')
+    description = serializer.validated_data.get('description')
+    completed = serializer.validated_data.get('completed')
 
     try:
         task = Task.objects.create(
-            title=validated_data['title'],
-            description=validated_data['description'],
-            completed=validated_data['completed']
+            title=title,
+            description=description,
+            completed=completed
         )
         return Response({
             "status": "success",
@@ -64,25 +66,29 @@ def update_task(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    validated_data = serializer.validated_data
+    task_id = serializer.validated_data.get('task_id')
+    title = serializer.validated_data.get('title')
+    description = serializer.validated_data.get('description')
+    completed = serializer.validated_data.get('completed')
 
-    try:
-        task = Task.objects.get(id=validated_data['task_id'])
-        task.title = validated_data.get('title', task.title)
-        task.description = validated_data.get('description', task.description)
-        task.completed = validated_data.get('completed', task.completed)
-        task.save()
-
-        return Response({
-            "status": "success",
-            "message": "Task updated successfully",
-            "data": TaskModelSerializer(task).data
-        }, status=status.HTTP_200_OK)
-    except Task.DoesNotExist:
+    task_exists = Task.objects.filter(id=task_id).exists()
+    if not task_exists:
         return Response(
             {"status": "error", "message": "Task not found"},
             status=status.HTTP_404_NOT_FOUND
         )
+
+    task = Task.objects.get(id=task_id)
+    task.title = title
+    task.description = description
+    task.completed = completed
+    task.save()
+
+    return Response({
+        "status": "success",
+        "message": "Task updated successfully",
+        "data": TaskModelSerializer(task).data
+    }, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
 def delete_task(request):
@@ -94,18 +100,19 @@ def delete_task(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    validated_data = serializer.validated_data
+    task_id = serializer.validated_data.get('task_id')
 
-    try:
-        task = Task.objects.get(id=validated_data['task_id'])
-        task.delete()
-
-        return Response({
-            "status": "success",
-            "message": "Task deleted successfully"
-        }, status=status.HTTP_200_OK)
-    except Task.DoesNotExist:
+    task_exists = Task.objects.filter(id=task_id).exists()
+    if not task_exists:
         return Response(
             {"status": "error", "message": "Task not found"},
             status=status.HTTP_404_NOT_FOUND
         )
+
+    task = Task.objects.get(id=task_id)
+    task.delete()
+
+    return Response({
+        "status": "success",
+        "message": "Task deleted successfully"
+    }, status=status.HTTP_200_OK)
