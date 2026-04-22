@@ -30,6 +30,8 @@ class LeaveRequestAdmin(admin.ModelAdmin):
         "status",
         "approved_by",
         "approved_at",
+        "rejected_by",
+        "rejected_at",
         "created_at",
     )
     list_filter = ("status", "leave_type", "start_date", "end_date")
@@ -40,4 +42,4 @@ class LeaveRequestAdmin(admin.ModelAdmin):
         "leave_type__name",
         "reason",
     )
-    readonly_fields = ("created_at", "updated_at", "approved_at")
+    readonly_fields = ("created_at", "updated_at", "approved_at", "rejected_at")

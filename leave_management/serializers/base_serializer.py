@@ -3,25 +3,6 @@ from decimal import Decimal
 from rest_framework import serializers
 from leave_management.models import LeaveType
 
-
-class LeaveRequestEmployeeSerializer(serializers.Serializer):
-    id = serializers.IntegerField(read_only=True)
-    username = serializers.CharField(read_only=True)
-    first_name = serializers.CharField(read_only=True)
-    last_name = serializers.CharField(read_only=True)
-    role = serializers.CharField(read_only=True)
-    employee_number = serializers.CharField(read_only=True)
-    department = serializers.CharField(read_only=True)
-
-
-class LeaveRequestApprovedBySerializer(serializers.Serializer):
-    id = serializers.IntegerField(read_only=True)
-    username = serializers.CharField(read_only=True)
-    first_name = serializers.CharField(read_only=True)
-    last_name = serializers.CharField(read_only=True)
-    role = serializers.CharField(read_only=True)
-
-
 class LeaveRequestCreateSerializer(serializers.Serializer):
     leave_type_id = serializers.IntegerField()
     start_date = serializers.DateField()
@@ -52,8 +33,11 @@ class LeaveRequestCreateSerializer(serializers.Serializer):
         total_days = (end_date - start_date).days + 1
         return Decimal(str(total_days))
 
+class ApproveLeaveRequestSerializer(serializers.Serializer):
+    leave_request_id = serializers.IntegerField()
 
-class LeaveRequestRejectSerializer(serializers.Serializer):
+class RejectLeaveRequestSerializer(serializers.Serializer):
+    leave_request_id = serializers.IntegerField()
     rejection_reason = serializers.CharField()
 
     def validate_rejection_reason(self, value):

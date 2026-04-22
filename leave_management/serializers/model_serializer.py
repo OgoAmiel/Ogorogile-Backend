@@ -35,6 +35,7 @@ class LeaveRequestListSerializer(serializers.ModelSerializer):
     leave_type = LeaveTypeSerializer(read_only=True)
     employee = serializers.SerializerMethodField()
     approved_by = serializers.SerializerMethodField()
+    rejected_by = serializers.SerializerMethodField()
 
     class Meta:
         model = LeaveRequest
@@ -50,6 +51,8 @@ class LeaveRequestListSerializer(serializers.ModelSerializer):
             "status",
             "rejection_reason",
             "cancellation_reason",
+            "rejected_by",
+            "rejected_at",
             "approved_by",
             "approved_at",
             "created_at",
@@ -73,6 +76,19 @@ class LeaveRequestListSerializer(serializers.ModelSerializer):
             return None
 
         user = obj.approved_by
+        return {
+            "id": user.id,
+            "username": user.username,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "role": user.role,
+        }
+
+    def get_rejected_by(self, obj):
+        if not obj.rejected_by:
+            return None
+
+        user = obj.rejected_by
         return {
             "id": user.id,
             "username": user.username,

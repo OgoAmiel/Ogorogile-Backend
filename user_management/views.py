@@ -11,11 +11,8 @@ from user_management.serializers.model_serializers import CurrentUserSerializer
 def get_user(request):
     serializer = CurrentUserSerializer(request.user)
 
-    return Response(
-        {
-            "status": "success",
-            "message": "Current user retrieved successfully",
-            "data": serializer.data,
-        },
-        status=status.HTTP_200_OK,
-    )
+    return Response({
+        "status": "success",
+        "message": "Current user retrieved successfully",
+        "data": serializer.data,},
+        status=status.HTTP_200_OK,)
