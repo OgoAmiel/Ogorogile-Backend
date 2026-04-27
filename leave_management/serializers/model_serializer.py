@@ -36,6 +36,7 @@ class LeaveRequestListSerializer(serializers.ModelSerializer):
     employee = serializers.SerializerMethodField()
     approved_by = serializers.SerializerMethodField()
     rejected_by = serializers.SerializerMethodField()
+    attachment_url = serializers.SerializerMethodField()
 
     class Meta:
         model = LeaveRequest
@@ -48,6 +49,7 @@ class LeaveRequestListSerializer(serializers.ModelSerializer):
             "days_requested",
             "reason",
             "attachment",
+            "attachment_url",
             "status",
             "rejection_reason",
             "cancellation_reason",
@@ -96,3 +98,9 @@ class LeaveRequestListSerializer(serializers.ModelSerializer):
             "last_name": user.last_name,
             "role": user.role,
         }
+
+    def get_attachment_url(self, obj):
+        request = self.context.get("request")
+        if obj.attachment and request:
+            return request.build_absolute_uri(obj.attachment.url)
+        return None

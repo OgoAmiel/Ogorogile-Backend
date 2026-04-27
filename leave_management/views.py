@@ -36,7 +36,7 @@ def create_leave_request(request):
         return Response({
             "status": "success",
             "message": "Leave request created successfully",
-            "data": LeaveRequestListSerializer(leave_request).data,},
+            "data": LeaveRequestListSerializer(leave_request, context={"request": request}).data,},
             status=status.HTTP_201_CREATED,
         )
 
@@ -54,7 +54,7 @@ def get_leave_requests(request):
             employee=request.user
             ).select_related("employee", "leave_type", "approved_by", "rejected_by")
 
-        serializer = LeaveRequestListSerializer(leave_requests, many=True)
+        serializer = LeaveRequestListSerializer(leave_requests, many=True, context={"request": request})
         return Response({
             "status": "success",
             "message": "Leave requests retrieved successfully",
@@ -129,7 +129,7 @@ def cancel_leave_request(request):
 def get_pending_leave_requests(request):
     try:
         pending_requests = get_pending_leave_requests_helper(request.user)
-        serializer = LeaveRequestListSerializer(pending_requests, many=True)
+        serializer = LeaveRequestListSerializer(pending_requests, many=True, context={"request": request})
 
         return Response({
             "status": "success",
@@ -167,7 +167,7 @@ def approve_leave_request(request):
         return Response({
             "status": "success",
             "message": "Leave request approved successfully",
-            "data": LeaveRequestListSerializer(leave_request).data,},
+            "data": LeaveRequestListSerializer(leave_request, context={"request": request}).data,},
             status=status.HTTP_200_OK,
         )
     except DjangoValidationError as error:
@@ -201,7 +201,7 @@ def reject_leave_request(request):
         return Response({
             "status": "success",
             "message": "Leave request rejected successfully",
-            "data": LeaveRequestListSerializer(leave_request).data,},
+            "data": LeaveRequestListSerializer(leave_request, context={"request": request}).data,},
             status=status.HTTP_200_OK,
         )
     except DjangoValidationError as error:
@@ -223,7 +223,7 @@ def get_approved_leave_requests(request):
             "approved_by",
         )
 
-        serializer = LeaveRequestListSerializer(approved_requests, many=True)
+        serializer = LeaveRequestListSerializer(approved_requests, many=True, context={"request": request})
         return Response({
             "status": "success",
             "message": "Approved leave requests retrieved successfully",
@@ -250,7 +250,7 @@ def get_rejected_leave_requests(request):
             "rejected_by",
         )
 
-        serializer = LeaveRequestListSerializer(rejected_requests, many=True)
+        serializer = LeaveRequestListSerializer(rejected_requests, many=True, context={"request": request})
         return Response({
             "status": "success",
             "message": "Rejected leave requests retrieved successfully",
