@@ -218,3 +218,36 @@ def reject_leave_request_helper(user, leave_request_id, rejection_reason):
     leave_request.save()
 
     return leave_request
+
+@transaction.atomic
+def create_leave_type_helper(request_user, name, default_days, requires_attachment, is_active):
+    if request_user.role != UserRole.ADMIN:
+        raise ValidationError("Only admins can create leave types.")
+
+    leave_type = LeaveType(
+        name=name,
+        default_days=default_days,
+        requires_attachment=requires_attachment,
+        is_active=is_active,
+    )
+    leave_type.full_clean()
+    leave_type.save()
+
+    return leave_type
+
+
+@transaction.atomic
+def update_leave_type_helper(request_user, target_leave_type, name, default_days, requires_attachment, is_active):
+
+    if request_user.role != UserRole.ADMIN:
+        raise ValidationError("Only admins can update leave types.")
+
+    target_leave_type.name = name
+    target_leave_type.default_days = default_days
+    target_leave_type.requires_attachment = requires_attachment
+    target_leave_type.is_active = is_active
+
+    target_leave_type.full_clean()
+    target_leave_type.save()
+
+    return target_leave_type

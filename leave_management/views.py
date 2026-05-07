@@ -1,18 +1,19 @@
 from django.shortcuts import render
 from django.core.exceptions import ValidationError as DjangoValidationError
 from leave_management.api_helpers.leave_helpers import (approve_leave_request_helper, create_leave_request_helper,
-                                                        cancel_leave_request_helper,get_pending_leave_requests_helper,
-                                                        reject_leave_request_helper)
-from leave_management.models import LeaveBalance, LeaveRequest, LeaveRequestStatus
-from leave_management.serializers.model_serializer import LeaveBalanceSerializer, LeaveRequestListSerializer
+                                                        cancel_leave_request_helper, create_leave_type_helper,get_pending_leave_requests_helper,
+                                                        reject_leave_request_helper, update_leave_type_helper)
+from leave_management.models import LeaveBalance, LeaveRequest, LeaveRequestStatus, LeaveType
+from leave_management.serializers.model_serializer import LeaveBalanceSerializer, LeaveRequestListSerializer, LeaveTypeAdminSerializer
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 
-from leave_management.serializers.base_serializer import (ApproveLeaveRequestSerializer, CancelLeaveRequestSerializer,
-                                                        LeaveRequestCreateSerializer, RejectLeaveRequestSerializer)
+from leave_management.serializers.base_serializer import (ApproveLeaveRequestSerializer, CancelLeaveRequestSerializer, CreateLeaveTypeSerializer,
+                                                        LeaveRequestCreateSerializer, RejectLeaveRequestSerializer, UpdateLeaveTypeSerializer)
+from user_management.models import UserRole
 
 # Create your views here.
 @api_view(["POST"])
@@ -40,10 +41,10 @@ def create_leave_request(request):
             status=status.HTTP_201_CREATED,
         )
 
-    except DjangoValidationError as error:
+    except Exception as e:
         return Response({
             "status": "error",
-            "message": error.message_dict if hasattr(error, "message_dict") else error.messages,},
+            "message": str(e),},
             status=status.HTTP_400_BAD_REQUEST,)
 
 @api_view(["GET"])
@@ -117,11 +118,12 @@ def cancel_leave_request(request):
             status=status.HTTP_200_OK,
         )
 
-    except DjangoValidationError as error:
+    except Exception as e:
         return Response({
             "status": "error",
-            "message": error.message_dict if hasattr(error, "message_dict") else error.messages,},
-            status=status.HTTP_400_BAD_REQUEST,)
+            "message": str(e),},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
 
 @api_view(["GET"])
@@ -138,11 +140,12 @@ def get_pending_leave_requests(request):
             status=status.HTTP_200_OK,
         )
 
-    except DjangoValidationError as error:
+    except Exception as e:
         return Response({
             "status": "error",
-            "message": error.message_dict if hasattr(error, "message_dict") else error.messages,},
-            status=status.HTTP_400_BAD_REQUEST,)
+            "message": str(e),},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -170,10 +173,10 @@ def approve_leave_request(request):
             "data": LeaveRequestListSerializer(leave_request, context={"request": request}).data,},
             status=status.HTTP_200_OK,
         )
-    except DjangoValidationError as error:
+    except Exception as e:
         return Response({
             "status": "error",
-            "message": error.message_dict if hasattr(error, "message_dict") else error.messages,},
+            "message": str(e),},
             status=status.HTTP_400_BAD_REQUEST,)
 
 @api_view(["POST"])
@@ -204,11 +207,12 @@ def reject_leave_request(request):
             "data": LeaveRequestListSerializer(leave_request, context={"request": request}).data,},
             status=status.HTTP_200_OK,
         )
-    except DjangoValidationError as error:
+    except Exception as e:
         return Response({
             "status": "error",
-            "message": error.message_dict if hasattr(error, "message_dict") else error.messages,},
-            status=status.HTTP_400_BAD_REQUEST,)
+            "message": str(e),},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -233,7 +237,7 @@ def get_approved_leave_requests(request):
     except Exception as e:
         return Response({
             "status": "error",
-            "message": str(e)},
+            "message": str(e),},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -260,6 +264,103 @@ def get_rejected_leave_requests(request):
     except Exception as e:
         return Response({
             "status": "error",
-            "message": str(e)},
+            "message": str(e),},
             status=status.HTTP_400_BAD_REQUEST,
         )
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_leave_types(request):
+    if request.user.role != UserRole.ADMIN:
+        return Response({
+            "status": "error",
+            "message": ["Only admins can view leave types."],
+            },status=status.HTTP_403_FORBIDDEN,)
+
+    leave_types = LeaveType.objects.all()
+    serializer = LeaveTypeAdminSerializer(leave_types, many=True)
+
+    return Response({
+        "status": "success",
+        "message": "Leave types retrieved successfully",
+        "data": serializer.data,
+        },status=status.HTTP_200_OK,)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def create_leave_type(request):
+    serializer = CreateLeaveTypeSerializer(data=request.data)
+
+    if not serializer.is_valid():
+        return Response({
+            "status": "error",
+            "message": serializer.errors,
+            },status=status.HTTP_400_BAD_REQUEST,)
+
+    name = serializer.validated_data.get("name")
+    default_days = serializer.validated_data.get("default_days")
+    requires_attachment = serializer.validated_data.get("requires_attachment", False)
+    is_active = serializer.validated_data.get("is_active", True)
+
+    try:
+        leave_type = create_leave_type_helper(
+            request_user=request.user,
+            name=name,
+            default_days=default_days,
+            requires_attachment=requires_attachment,
+            is_active=is_active,
+        )
+
+        return Response({
+            "status": "success",
+            "message": "Leave type created successfully",
+            "data": LeaveTypeAdminSerializer(leave_type).data,
+            },status=status.HTTP_201_CREATED,
+            )
+    except Exception as e:
+        return Response({
+            "status": "error",
+            "message": str(e),},
+            status=status.HTTP_400_BAD_REQUEST,)
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def update_leave_type(request):
+    serializer = UpdateLeaveTypeSerializer(data=request.data)
+
+    if not serializer.is_valid():
+        return Response({
+            "status": "error",
+            "message": serializer.errors,
+            },status=status.HTTP_400_BAD_REQUEST,)
+
+    target_leave_type = serializer.validated_data.get("target_leave_type")
+    name = serializer.validated_data.get("name")
+    default_days = serializer.validated_data.get("default_days")
+    requires_attachment = serializer.validated_data.get("requires_attachment", target_leave_type.requires_attachment)
+    is_active = serializer.validated_data.get("is_active", target_leave_type.is_active)
+
+    try:
+        leave_type = update_leave_type_helper(
+            request_user=request.user,
+            target_leave_type=target_leave_type,
+            name=name,
+            default_days=default_days,
+            requires_attachment=requires_attachment,
+            is_active=is_active,
+        )
+
+        return Response(
+            {
+                "status": "success",
+                "message": "Leave type updated successfully",
+                "data": LeaveTypeAdminSerializer(leave_type).data,
+            },
+            status=status.HTTP_200_OK,
+        )
+    except Exception as e:
+        return Response({
+            "status": "error",
+            "message": str(e),},
+            status=status.HTTP_400_BAD_REQUEST,)

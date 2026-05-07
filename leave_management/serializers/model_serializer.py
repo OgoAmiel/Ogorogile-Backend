@@ -104,3 +104,14 @@ class LeaveRequestListSerializer(serializers.ModelSerializer):
         if obj.attachment and request:
             return request.build_absolute_uri(obj.attachment.url)
         return None
+
+class LeaveTypeAdminSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LeaveType
+        fields = [
+            "id",
+            "name",
+            "default_days",
+            "requires_attachment",
+            "is_active",
+        ]

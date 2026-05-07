@@ -80,3 +80,57 @@ class CancelLeaveRequestSerializer(serializers.Serializer):
 
     def validate_cancellation_reason(self, value):
         return value.strip()
+
+class CreateLeaveTypeSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=100)
+    default_days = serializers.DecimalField(max_digits=5, decimal_places=1)
+    requires_attachment = serializers.BooleanField(required=False, default=False)
+    is_active = serializers.BooleanField(required=False, default=True)
+
+    def validate_name(self, value):
+        value = value.strip()
+
+        if LeaveType.objects.filter(name__iexact=value).exists():
+            raise serializers.ValidationError("A leave type with this name already exists.")
+
+        return value
+
+    def validate_default_days(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Default days cannot be negative.")
+        return value
+
+
+class UpdateLeaveTypeSerializer(serializers.Serializer):
+    leave_type_id = serializers.IntegerField()
+    name = serializers.CharField(max_length=100)
+    default_days = serializers.DecimalField(max_digits=5, decimal_places=1)
+    requires_attachment = serializers.BooleanField(required=False)
+    is_active = serializers.BooleanField(required=False)
+
+    def validate_name(self, value):
+        return value.strip()
+
+    def validate_default_days(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Default days cannot be negative.")
+        return value
+
+    def validate(self, attrs):
+        leave_type_id = attrs.get("leave_type_id")
+        name = attrs.get("name")
+
+        try:
+            target_leave_type = LeaveType.objects.get(id=leave_type_id)
+        except LeaveType.DoesNotExist:
+            raise serializers.ValidationError({
+                "leave_type_id": "Selected leave type does not exist."
+            })
+
+        if LeaveType.objects.filter(name__iexact=name).exclude(id=leave_type_id).exists():
+            raise serializers.ValidationError({
+                "name": "A leave type with this name already exists."
+            })
+
+        attrs["target_leave_type"] = target_leave_type
+        return attrs

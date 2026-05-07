@@ -19,8 +19,12 @@ class LeaveType(models.Model):
     requires_attachment = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
 
+    class Meta:
+        ordering = ["name"]
+
     def __str__(self):
         return self.name
+
 
 
 class LeaveBalance(models.Model):
