@@ -165,7 +165,7 @@ class DeleteUserSerializer(serializers.Serializer):
 
     def validate_user_id(self, value):
         try:
-            user = User.objects.get(id=value)
+            User.objects.get(id=value)
         except User.DoesNotExist:
             raise serializers.ValidationError("Selected user does not exist.")
         return value
