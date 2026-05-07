@@ -11,7 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 
-from leave_management.serializers.base_serializer import (ApproveLeaveRequestSerializer, CancelLeaveRequestSerializer, CreateLeaveTypeSerializer,
+from leave_management.serializers.base_serializer import (ApproveLeaveRequestSerializer, CancelLeaveRequestSerializer, CreateLeaveTypeSerializer, DeleteLeaveTypeSerializer,
                                                         LeaveRequestCreateSerializer, RejectLeaveRequestSerializer, UpdateLeaveTypeSerializer)
 from user_management.models import UserRole
 
@@ -364,3 +364,38 @@ def update_leave_type(request):
             "status": "error",
             "message": str(e),},
             status=status.HTTP_400_BAD_REQUEST,)
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def delete_leave_type(request):
+    serializer = DeleteLeaveTypeSerializer(data=request.data)
+
+    if not serializer.is_valid():
+        return Response({
+            "status": "error",
+            "message": serializer.errors,
+            },status=status.HTTP_400_BAD_REQUEST,)
+
+    leave_type_id = serializer.validated_data.get("leave_type_id")
+
+    leave_type_exists = LeaveType.objects.filter(id=leave_type_id).exists()
+    if not leave_type_exists:
+        return Response({
+            "status": "error",
+            "message": "Selected leave type does not exist.",
+            },status=status.HTTP_400_BAD_REQUEST,)
+
+    try:
+        leave_type = LeaveType.objects.get(id=leave_type_id)
+        leave_type.delete()
+
+        return Response({
+            "status": "success",
+            "message": "Leave type deleted successfully",
+            },status=status.HTTP_200_OK,
+            )
+    except Exception as e:
+        return Response({
+            "status": "error",
+            "message": str(e),
+            },status=status.HTTP_400_BAD_REQUEST,)

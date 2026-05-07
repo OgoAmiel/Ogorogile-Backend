@@ -134,3 +134,6 @@ class UpdateLeaveTypeSerializer(serializers.Serializer):
 
         attrs["target_leave_type"] = target_leave_type
         return attrs
+
+class DeleteLeaveTypeSerializer(serializers.Serializer):
+    leave_type_id = serializers.IntegerField(required=True)

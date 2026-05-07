@@ -161,11 +161,4 @@ class UpdateUserSerializer(serializers.Serializer):
         return attrs
 
 class DeleteUserSerializer(serializers.Serializer):
-    user_id = serializers.IntegerField()
-
-    def validate_user_id(self, value):
-        try:
-            User.objects.get(id=value)
-        except User.DoesNotExist:
-            raise serializers.ValidationError("Selected user does not exist.")
-        return value
+    user_id = serializers.IntegerField(required=True)
