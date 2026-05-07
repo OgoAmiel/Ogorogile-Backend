@@ -3,9 +3,9 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from user_management.api_helpers.user_helpers import create_user_helper, update_user_helper
+from user_management.api_helpers.user_helpers import create_user_helper, update_user_helper, delete_user_helper
 from user_management.models import UserRole
-from user_management.serializers.base_serilaizers import CreateUserSerializer, UpdateUserSerializer, User
+from user_management.serializers.base_serilaizers import CreateUserSerializer, UpdateUserSerializer, DeleteUserSerializer, User
 from user_management.serializers.model_serializers import CurrentUserSerializer, UserReadSerializer
 
 # Create your views here.
@@ -130,6 +130,45 @@ def update_user(request):
             "status": "success",
             "message": "User updated successfully",
             "data": UserReadSerializer(updated_user).data,},
+            status=status.HTTP_200_OK,
+            )
+    except Exception as e:
+        return Response({
+            "status": "error",
+            "message": str(e),},
+            status=status.HTTP_400_BAD_REQUEST,)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def delete_user(request):
+    serializer = DeleteUserSerializer(data=request.data)
+
+    if not serializer.is_valid():
+        return Response({
+            "status": "error",
+            "message": serializer.errors,},
+            status=status.HTTP_400_BAD_REQUEST,)
+
+    user_id = serializer.validated_data.get("user_id")
+
+    try:
+        target_user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({
+            "status": "error",
+            "message": "Selected user does not exist.",},
+            status=status.HTTP_404_NOT_FOUND,)
+
+    try:
+        delete_user_helper(
+            request_user=request.user,
+            target_user=target_user,
+        )
+
+        return Response({
+            "status": "success",
+            "message": "User deleted successfully",},
             status=status.HTTP_200_OK,
             )
     except Exception as e:

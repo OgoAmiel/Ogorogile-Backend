@@ -55,3 +55,15 @@ def update_user_helper(request_user, target_user, first_name, last_name, email, 
     target_user.save()
 
     return target_user
+
+@transaction.atomic
+def delete_user_helper(request_user, target_user):
+
+    if request_user.role != UserRole.ADMIN:
+        raise ValidationError("Only admins can delete users.")
+
+    if request_user.id == target_user.id:
+        raise ValidationError("You cannot delete your own account.")
+
+    target_user.delete()
+    return None

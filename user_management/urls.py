@@ -1,6 +1,6 @@
 from django.urls import path
 
-from user_management.views import create_user, get_user, get_users, update_user
+from user_management.views import create_user, get_user, get_users, update_user, delete_user
 
 urlpatterns = [
     # Add URL patterns for user management here
@@ -8,4 +8,5 @@ urlpatterns = [
     path("create_user/", create_user, name="create_user"),
     path("get_users/", get_users, name="get_users"),
     path("update_user/", update_user, name="update_user"),
+    path("delete_user/", delete_user, name="delete_user"),
 ]
