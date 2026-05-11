@@ -1,18 +1,19 @@
 from django.shortcuts import render
-from django.core.exceptions import ValidationError as DjangoValidationError
 from leave_management.api_helpers.leave_helpers import (approve_leave_request_helper, create_leave_request_helper,
-                                                        cancel_leave_request_helper, create_leave_type_helper,get_pending_leave_requests_helper,
-                                                        reject_leave_request_helper, update_leave_type_helper)
+                                                        cancel_leave_request_helper, create_leave_type_helper,
+                                                        reject_leave_request_helper, update_leave_balance_helper, update_leave_type_helper,
+                                                        get_pending_leave_requests_helper)
 from leave_management.models import LeaveBalance, LeaveRequest, LeaveRequestStatus, LeaveType
-from leave_management.serializers.model_serializer import LeaveBalanceSerializer, LeaveRequestListSerializer, LeaveTypeAdminSerializer
+from leave_management.serializers.model_serializer import AdminLeaveBalanceSerializer, LeaveBalanceSerializer, LeaveRequestListSerializer, LeaveTypeAdminSerializer
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 
-from leave_management.serializers.base_serializer import (ApproveLeaveRequestSerializer, CancelLeaveRequestSerializer, CreateLeaveTypeSerializer, DeleteLeaveTypeSerializer,
-                                                        LeaveRequestCreateSerializer, RejectLeaveRequestSerializer, UpdateLeaveTypeSerializer)
+from leave_management.serializers.base_serializer import (ApproveLeaveRequestSerializer, CancelLeaveRequestSerializer, CreateLeaveTypeSerializer,
+                                                        LeaveRequestCreateSerializer, RejectLeaveRequestSerializer, UpdateLeaveBalanceSerializer, UpdateLeaveTypeSerializer,
+                                                        DeleteLeaveTypeSerializer)
 from user_management.models import UserRole
 
 # Create your views here.
@@ -351,14 +352,11 @@ def update_leave_type(request):
             is_active=is_active,
         )
 
-        return Response(
-            {
-                "status": "success",
-                "message": "Leave type updated successfully",
-                "data": LeaveTypeAdminSerializer(leave_type).data,
-            },
-            status=status.HTTP_200_OK,
-        )
+        return Response({
+            "status": "success",
+            "message": "Leave type updated successfully",
+            "data": LeaveTypeAdminSerializer(leave_type).data,
+            },status=status.HTTP_200_OK,)
     except Exception as e:
         return Response({
             "status": "error",
@@ -394,6 +392,87 @@ def delete_leave_type(request):
             "message": "Leave type deleted successfully",
             },status=status.HTTP_200_OK,
             )
+    except Exception as e:
+        return Response({
+            "status": "error",
+            "message": str(e),
+            },status=status.HTTP_400_BAD_REQUEST,)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_all_leave_requests(request):
+    if request.user.role != UserRole.ADMIN:
+        return Response({
+            "status": "error",
+            "message": ["Only admins can view all leave requests."],
+            },status=status.HTTP_403_FORBIDDEN,)
+
+    try:
+        leave_requests = LeaveRequest.objects.all(
+            ).select_related("employee", "leave_type", "approved_by", "rejected_by")
+        serializer = LeaveRequestListSerializer(leave_requests, many=True, context={"request": request})
+
+        return Response({
+            "status": "success",
+            "message": "All leave requests retrieved successfully",
+            "data": serializer.data,
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({
+            "status": "error",
+            "message": str(e),
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_all_leave_balances(request):
+    if request.user.role != UserRole.ADMIN:
+        return Response({
+            "status": "error",
+            "message": ["Only admins can view all leave balances."],
+            },status=status.HTTP_403_FORBIDDEN,)
+
+    try:
+        leave_balances = LeaveBalance.objects.all().select_related("employee", "leave_type")
+        serializer = AdminLeaveBalanceSerializer(leave_balances, many=True)
+
+        return Response({
+            "status": "success",
+            "message": "All leave balances retrieved successfully",
+            "data": serializer.data,
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({
+            "status": "error",
+            "message": str(e),
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def update_leave_balance(request):
+    serializer = UpdateLeaveBalanceSerializer(data=request.data)
+
+    if not serializer.is_valid():
+        return Response({
+            "status": "error",
+            "message": serializer.errors,
+            },status=status.HTTP_400_BAD_REQUEST,)
+
+    target_leave_balance = serializer.validated_data.get("target_leave_balance")
+    total_days = serializer.validated_data.get("total_days")
+
+    try:
+        updated_balance = update_leave_balance_helper(
+            request_user=request.user,
+            target_leave_balance=target_leave_balance,
+            total_days=total_days,
+        )
+
+        return Response({
+            "status": "success",
+            "message": "Leave balance updated successfully",
+            "data": AdminLeaveBalanceSerializer(updated_balance).data,
+            },status=status.HTTP_200_OK,)
     except Exception as e:
         return Response({
             "status": "error",

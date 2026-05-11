@@ -115,3 +115,34 @@ class LeaveTypeAdminSerializer(serializers.ModelSerializer):
             "requires_attachment",
             "is_active",
         ]
+class AdminLeaveBalanceSerializer(serializers.ModelSerializer):
+    employee = serializers.SerializerMethodField()
+    leave_type_name = serializers.CharField(source="leave_type.name", read_only=True)
+    remaining_days = serializers.SerializerMethodField()
+
+    class Meta:
+        model = LeaveBalance
+        fields = [
+            "id",
+            "employee",
+            "leave_type",
+            "leave_type_name",
+            "total_days",
+            "used_days",
+            "remaining_days",
+        ]
+
+    def get_employee(self, obj):
+        user = obj.employee
+        return {
+            "id": user.id,
+            "username": user.username,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "role": user.role,
+            "employee_number": user.employee_number,
+            "department": user.department,
+        }
+
+    def get_remaining_days(self, obj):
+        return obj.remaining_days

@@ -1,7 +1,7 @@
 from decimal import Decimal
 import os
 from rest_framework import serializers
-from leave_management.models import LeaveType
+from leave_management.models import LeaveBalance, LeaveType
 
 class LeaveRequestCreateSerializer(serializers.Serializer):
     leave_type_id = serializers.IntegerField()
@@ -137,3 +137,34 @@ class UpdateLeaveTypeSerializer(serializers.Serializer):
 
 class DeleteLeaveTypeSerializer(serializers.Serializer):
     leave_type_id = serializers.IntegerField(required=True)
+
+class UpdateLeaveBalanceSerializer(serializers.Serializer):
+    leave_balance_id = serializers.IntegerField()
+    total_days = serializers.DecimalField(max_digits=5, decimal_places=1)
+
+    def validate_total_days(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Total days cannot be negative.")
+        return value
+
+    def validate(self, attrs):
+        leave_balance_id = attrs.get("leave_balance_id")
+        total_days = attrs.get("total_days")
+
+        try:
+            target_leave_balance = LeaveBalance.objects.select_related(
+                "employee",
+                "leave_type",
+            ).get(id=leave_balance_id)
+        except LeaveBalance.DoesNotExist:
+            raise serializers.ValidationError({
+                "leave_balance_id": "Selected leave balance does not exist."
+            })
+
+        if total_days < target_leave_balance.used_days:
+            raise serializers.ValidationError({
+                "total_days": "Total days cannot be less than used days."
+            })
+
+        attrs["target_leave_balance"] = target_leave_balance
+        return attrs

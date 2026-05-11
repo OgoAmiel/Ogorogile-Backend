@@ -251,3 +251,14 @@ def update_leave_type_helper(request_user, target_leave_type, name, default_days
     target_leave_type.save()
 
     return target_leave_type
+
+@transaction.atomic
+def update_leave_balance_helper(request_user, target_leave_balance, total_days):
+    if request_user.role != UserRole.ADMIN:
+        raise ValidationError("Only admins can update leave balances.")
+
+    target_leave_balance.total_days = total_days
+    target_leave_balance.full_clean()
+    target_leave_balance.save()
+
+    return target_leave_balance
