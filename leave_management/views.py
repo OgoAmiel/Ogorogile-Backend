@@ -12,8 +12,8 @@ from rest_framework.response import Response
 
 
 from leave_management.serializers.base_serializer import (ApproveLeaveRequestSerializer, CancelLeaveRequestSerializer, CreateLeaveTypeSerializer,
-                                                        LeaveRequestCreateSerializer, RejectLeaveRequestSerializer, UpdateLeaveBalanceSerializer, UpdateLeaveTypeSerializer,
-                                                        DeleteLeaveTypeSerializer)
+                                                        LeaveRequestCreateSerializer, RejectLeaveRequestSerializer, UpdateLeaveBalanceSerializer,
+                                                        UpdateLeaveTypeSerializer, DeleteLeaveTypeSerializer)
 from user_management.models import UserRole
 
 # Create your views here.
@@ -272,20 +272,19 @@ def get_rejected_leave_requests(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_leave_types(request):
-    if request.user.role != UserRole.ADMIN:
+    try:
+        leave_types = LeaveType.objects.all()
+        serializer = LeaveTypeAdminSerializer(leave_types, many=True)
+        return Response({
+            "status": "success",
+            "message": "Leave types retrieved successfully",
+            "data": serializer.data,
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
         return Response({
             "status": "error",
-            "message": ["Only admins can view leave types."],
-            },status=status.HTTP_403_FORBIDDEN,)
-
-    leave_types = LeaveType.objects.all()
-    serializer = LeaveTypeAdminSerializer(leave_types, many=True)
-
-    return Response({
-        "status": "success",
-        "message": "Leave types retrieved successfully",
-        "data": serializer.data,
-        },status=status.HTTP_200_OK,)
+            "message": str(e),
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(["POST"])
@@ -299,18 +298,31 @@ def create_leave_type(request):
             "message": serializer.errors,
             },status=status.HTTP_400_BAD_REQUEST,)
 
-    name = serializer.validated_data.get("name")
+    name = serializer.validated_data.get("name").strip()
+    if LeaveType.objects.filter(name__iexact=name).exists():
+        return Response({
+            "status": "error",
+            "message": "A leave type with this name already exists."},
+            status=status.HTTP_400_BAD_REQUEST,)
+
     default_days = serializer.validated_data.get("default_days")
+
+    if default_days < 0:
+        return Response({
+            "status": "error",
+            "message": "Default days cannot be negative.",
+            }, status=status.HTTP_400_BAD_REQUEST)
+
     requires_attachment = serializer.validated_data.get("requires_attachment", False)
     is_active = serializer.validated_data.get("is_active", True)
 
     try:
         leave_type = create_leave_type_helper(
-            request_user=request.user,
-            name=name,
-            default_days=default_days,
-            requires_attachment=requires_attachment,
-            is_active=is_active,
+        request_user=request.user,
+        name=name,
+        default_days=default_days,
+        requires_attachment=requires_attachment,
+        is_active=is_active,
         )
 
         return Response({
@@ -336,11 +348,31 @@ def update_leave_type(request):
             "message": serializer.errors,
             },status=status.HTTP_400_BAD_REQUEST,)
 
-    target_leave_type = serializer.validated_data.get("target_leave_type")
-    name = serializer.validated_data.get("name")
+    leave_type_id = serializer.validated_data.get("leave_type_id")
+    name = serializer.validated_data.get("name").strip()
     default_days = serializer.validated_data.get("default_days")
-    requires_attachment = serializer.validated_data.get("requires_attachment", target_leave_type.requires_attachment)
-    is_active = serializer.validated_data.get("is_active", target_leave_type.is_active)
+    requires_attachment = serializer.validated_data.get("requires_attachment")
+    is_active = serializer.validated_data.get("is_active")
+
+    if default_days < 0:
+        return Response({
+            "status": "error",
+            "message": "Default days cannot be negative.",
+            },status=status.HTTP_400_BAD_REQUEST,)
+
+    try:
+        target_leave_type = LeaveType.objects.get(id=leave_type_id)
+    except LeaveType.DoesNotExist:
+        return Response({
+            "status": "error",
+            "message": "Selected leave type does not exist.",
+            },status=status.HTTP_400_BAD_REQUEST,)
+
+    if LeaveType.objects.filter(name__iexact=name).exclude(id=leave_type_id).exists():
+        return Response({
+            "status": "error",
+            "message": "A leave type with this name already exists.",
+            },status=status.HTTP_400_BAD_REQUEST,)
 
     try:
         leave_type = update_leave_type_helper(
@@ -458,8 +490,31 @@ def update_leave_balance(request):
             "message": serializer.errors,
             },status=status.HTTP_400_BAD_REQUEST,)
 
-    target_leave_balance = serializer.validated_data.get("target_leave_balance")
+    leave_balance_id = serializer.validated_data.get("leave_balance_id")
     total_days = serializer.validated_data.get("total_days")
+
+    if total_days < 0:
+        return Response({
+            "status": "error",
+            "message":"Total days cannot be negative.",
+            },status=status.HTTP_400_BAD_REQUEST,)
+
+    try:
+        target_leave_balance = LeaveBalance.objects.select_related(
+            "employee",
+            "leave_type",
+        ).get(id=leave_balance_id)
+    except LeaveBalance.DoesNotExist:
+        return Response({
+            "status": "error",
+            "message": "Selected leave balance does not exist.",
+            },status=status.HTTP_400_BAD_REQUEST,)
+
+    if total_days < target_leave_balance.used_days:
+        return Response({
+            "status": "error",
+            "message": "Total days cannot be less than used days.",
+            },status=status.HTTP_400_BAD_REQUEST,)
 
     try:
         updated_balance = update_leave_balance_helper(

@@ -24,15 +24,16 @@ def create_user_helper(request_user, username, first_name, last_name, email, pas
         is_active=is_active,
     )
 
-    active_leave_types = LeaveType.objects.filter(is_active=True)
+    if user.role == UserRole.EMPLOYEE:
+        active_leave_types = LeaveType.objects.filter(is_active=True)
 
-    for leave_type in active_leave_types:
-        LeaveBalance.objects.create(
-            employee=user,
-            leave_type=leave_type,
-            total_days=leave_type.default_days,
-            used_days=0,
-        )
+        for leave_type in active_leave_types:
+            LeaveBalance.objects.create(
+                employee=user,
+                leave_type=leave_type,
+                total_days=leave_type.default_days,
+                used_days=0,
+            )
 
     return user
 

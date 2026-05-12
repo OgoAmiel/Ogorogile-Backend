@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from leave_management.models import LeaveBalance, LeaveRequest, LeaveRequestStatus, LeaveType
 from leave_management.serializers.base_serializer import LeaveRequestCreateSerializer
-from user_management.models import UserRole
+from user_management.models import User, UserRole
 
 
 @transaction.atomic
@@ -232,6 +232,21 @@ def create_leave_type_helper(request_user, name, default_days, requires_attachme
     )
     leave_type.full_clean()
     leave_type.save()
+
+    employees = User.objects.filter(
+        role=UserRole.EMPLOYEE,
+        is_active=True,
+    )
+
+    for employee in employees:
+        leave_balance = LeaveBalance(
+            employee=employee,
+            leave_type=leave_type,
+            total_days=default_days,
+            used_days=0,
+        )
+        leave_balance.full_clean()
+        leave_balance.save()
 
     return leave_type
 

@@ -115,6 +115,7 @@ class LeaveTypeAdminSerializer(serializers.ModelSerializer):
             "requires_attachment",
             "is_active",
         ]
+
 class AdminLeaveBalanceSerializer(serializers.ModelSerializer):
     employee = serializers.SerializerMethodField()
     leave_type_name = serializers.CharField(source="leave_type.name", read_only=True)
