@@ -14,11 +14,7 @@ class CreateUserSerializer(serializers.Serializer):
     is_active = serializers.BooleanField(required=False, default=True)
 
     def validate_username(self, value):
-        value = value.strip()
-
-        if User.objects.filter(username=value).exists():
-            raise serializers.ValidationError("A user with this username already exists.")
-        return value
+        return value.strip()
 
     def validate_first_name(self, value):
         return value.strip()
@@ -36,42 +32,7 @@ class CreateUserSerializer(serializers.Serializer):
         if value in [None, ""]:
             return None
 
-        value = value.strip()
-
-        if User.objects.filter(employee_number=value).exists():
-            raise serializers.ValidationError("A user with this employee number already exists.")
-        return value
-
-    def validate(self, attrs):
-        role = attrs.get("role")
-        manager_id = attrs.get("manager_id")
-        manager = None
-
-        if manager_id is not None:
-            try:
-                manager = User.objects.get(id=manager_id, is_active=True)
-            except User.DoesNotExist:
-                raise serializers.ValidationError({
-                    "manager_id": "Selected manager does not exist or is inactive."
-                })
-
-            if manager.role != UserRole.MANAGER:
-                raise serializers.ValidationError({
-                    "manager_id": "Selected user is not a manager."
-                })
-
-        if role == UserRole.EMPLOYEE and manager is None:
-            raise serializers.ValidationError({
-                "manager_id": "Employees must be assigned to a manager."
-            })
-
-        if role in [UserRole.MANAGER, UserRole.ADMIN] and manager is not None:
-            raise serializers.ValidationError({
-                "manager_id": "Only employees can be assigned to a manager."
-            })
-
-        attrs["manager"] = manager
-        return attrs
+        return value.strip()
 
 class UpdateUserSerializer(serializers.Serializer):
     user_id = serializers.IntegerField()
@@ -96,69 +57,11 @@ class UpdateUserSerializer(serializers.Serializer):
     def validate_email(self, value):
         return value.strip()
 
-    def validate_user_id(self, value):
-        try:
-            user = User.objects.get(id=value)
-        except User.DoesNotExist:
-            raise serializers.ValidationError("Selected user does not exist.")
-        return value
-
     def validate_employee_number(self, value):
         if value in [None, ""]:
             return None
 
-        value = value.strip()
-        user_id = self.initial_data.get("user_id")
-
-        if User.objects.filter(employee_number=value).exclude(id=user_id).exists():
-            raise serializers.ValidationError("A user with this employee number already exists.")
-
-        return value
-
-    def validate(self, attrs):
-        user_id = attrs.get("user_id")
-        role = attrs.get("role")
-        manager_id = attrs.get("manager_id")
-        manager = None
-
-        try:
-            target_user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            raise serializers.ValidationError({
-                "user_id": "Selected user does not exist."
-            })
-
-        if manager_id is not None:
-            try:
-                manager = User.objects.get(id=manager_id, is_active=True)
-            except User.DoesNotExist:
-                raise serializers.ValidationError({
-                    "manager_id": "Selected manager does not exist or is inactive."
-                })
-
-            if manager.role != UserRole.MANAGER:
-                raise serializers.ValidationError({
-                    "manager_id": "Selected user is not a manager."
-                })
-
-            if manager.id == target_user.id:
-                raise serializers.ValidationError({
-                    "manager_id": "A user cannot be their own manager."
-                })
-
-        if role == UserRole.EMPLOYEE and manager is None:
-            raise serializers.ValidationError({
-                "manager_id": "Employees must be assigned to a manager."
-            })
-
-        if role in [UserRole.MANAGER, UserRole.ADMIN] and manager is not None:
-            raise serializers.ValidationError({
-                "manager_id": "Only employees can be assigned to a manager."
-            })
-
-        attrs["target_user"] = target_user
-        attrs["manager"] = manager
-        return attrs
+        return value.strip()
 
 class DeleteUserSerializer(serializers.Serializer):
     user_id = serializers.IntegerField(required=True)

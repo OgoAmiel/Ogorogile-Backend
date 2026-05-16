@@ -5,6 +5,69 @@ from leave_management.models import LeaveBalance, LeaveType
 from user_management.models import User, UserRole
 
 
+def assign_manager(role, manager_id):
+    manager = None
+
+    if manager_id is not None:
+        try:
+            manager = User.objects.get(id=manager_id, is_active=True)
+        except User.DoesNotExist:
+            raise ValidationError({
+                "manager_id": "Selected manager does not exist or is inactive."
+            })
+
+        if manager.role != UserRole.MANAGER:
+            raise ValidationError({
+                "manager_id": "Selected user is not a manager."
+            })
+
+    if role == UserRole.EMPLOYEE and manager is None:
+        raise ValidationError({
+            "manager_id": "Employees must be assigned to a manager."
+        })
+
+    if role in [UserRole.MANAGER, UserRole.ADMIN] and manager is not None:
+        raise ValidationError({
+            "manager_id": "Only employees can be assigned to a manager."
+        })
+
+    return manager
+
+
+def update_assign_manager(target_user, role, manager_id):
+    manager = None
+
+    if manager_id is not None:
+        try:
+            manager = User.objects.get(id=manager_id, is_active=True)
+        except User.DoesNotExist:
+            raise ValidationError({
+                "manager_id": "Selected manager does not exist or is inactive."
+            })
+
+        if manager.role != UserRole.MANAGER:
+            raise ValidationError({
+                "manager_id": "Selected user is not a manager."
+            })
+
+        if manager.id == target_user.id:
+            raise ValidationError({
+                "manager_id": "A user cannot be their own manager."
+            })
+
+    if role == UserRole.EMPLOYEE and manager is None:
+        raise ValidationError({
+            "manager_id": "Employees must be assigned to a manager."
+        })
+
+    if role in [UserRole.MANAGER, UserRole.ADMIN] and manager is not None:
+        raise ValidationError({
+            "manager_id": "Only employees can be assigned to a manager."
+        })
+
+    return manager
+
+
 @transaction.atomic
 def create_user_helper(request_user, username, first_name, last_name, email, password, role, employee_number, department, manager, is_active):
 

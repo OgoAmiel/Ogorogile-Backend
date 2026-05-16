@@ -1,9 +1,11 @@
 from django.shortcuts import render
+from django.core.exceptions import ValidationError
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from user_management.api_helpers.user_helpers import create_user_helper, update_user_helper, delete_user_helper
+from user_management.api_helpers.user_helpers import (create_user_helper, update_user_helper, delete_user_helper,
+                                                    assign_manager, update_assign_manager)
 from user_management.models import UserRole
 from user_management.serializers.base_serilaizers import CreateUserSerializer, UpdateUserSerializer, DeleteUserSerializer, User
 from user_management.serializers.model_serializers import CurrentUserSerializer, UserReadSerializer
@@ -40,8 +42,31 @@ def create_user(request):
     role = serializer.validated_data.get("role")
     employee_number = serializer.validated_data.get("employee_number")
     department = serializer.validated_data.get("department", "").strip()
-    manager = serializer.validated_data.get("manager")
+    manager_id = serializer.validated_data.get("manager_id")
     is_active = serializer.validated_data.get("is_active", True)
+
+    if username and User.objects.filter(username=username).exists():
+        return Response({
+            "status": "error",
+            "message": "A user with this username already exists.",
+            }, status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if employee_number and User.objects.filter(employee_number=employee_number).exists():
+        return Response({
+            "status": "error",
+            "message": "A user with this employee number already exists.",
+            }, status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        manager = assign_manager(role=role, manager_id=manager_id)
+    except ValidationError as e:
+        return Response({
+            "status": "error",
+            "message": e.message_dict,
+            }, status=status.HTTP_400_BAD_REQUEST,
+        )
 
     try:
         user = create_user_helper(
@@ -102,15 +127,39 @@ def update_user(request):
             "message": serializer.errors,},
             status=status.HTTP_400_BAD_REQUEST,)
 
-    target_user = serializer.validated_data.get("target_user")
+    user_id = serializer.validated_data.get("user_id")
+
+    try:
+        target_user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({
+            "status": "error",
+            "message": "Selected user does not exist."
+            },status=status.HTTP_400_BAD_REQUEST,)
+
     first_name = serializer.validated_data.get("first_name")
     last_name = serializer.validated_data.get("last_name")
     email = serializer.validated_data.get("email", "")
     role = serializer.validated_data.get("role")
     employee_number = serializer.validated_data.get("employee_number")
     department = serializer.validated_data.get("department", "").strip()
-    manager = serializer.validated_data.get("manager")
+    manager_id = serializer.validated_data.get("manager_id")
     is_active = serializer.validated_data.get("is_active", target_user.is_active)
+
+    try:
+        manager = update_assign_manager(target_user=target_user, role=role, manager_id=manager_id)
+    except ValidationError as e:
+        return Response({
+            "status": "error",
+            "message": e.message_dict,
+            }, status=status.HTTP_400_BAD_REQUEST,)
+
+    if employee_number and User.objects.filter(employee_number=employee_number).exclude(id=target_user.id).exists():
+        return Response({
+            "status": "error",
+            "message": "A user with this employee number already exists."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     try:
         updated_user = update_user_helper(
